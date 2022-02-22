@@ -49,8 +49,29 @@ func getIDfromanilisturl(iurl string) (id string, err error) {
 	return params[2], nil
 }
 
-func getGogoAnimeLinks(id string) (ret GogoAnime, err error) {
-	response, err := client.Get(fmt.Sprintf("https://raw.githubusercontent.com/MALSync/MAL-Sync-Backup/master/data/anilist/anime/%s.json", id)).End()
+func getIDfromMALurl(iurl string) (id string, err error) {
+	u, err := url.Parse(iurl)
+	if err != nil {
+		return "", err
+	}
+	if u.Hostname() != "myanimelist.net" {
+		return "", errors.New("invalid url")
+	}
+
+	params := strings.Split(u.Path, "/")
+	paramlen := len(params)
+	if paramlen < 2 {
+		return "", errors.New("invalid url")
+
+	}
+	if params[1] != "anime" {
+		return "", errors.New("invalid url")
+	}
+	return params[2], nil
+}
+
+func getGogoAnimeLinks(id string) (al string, ret GogoAnime, err error) {
+	response, err := client.Get(fmt.Sprintf("https://raw.githubusercontent.com/MALSync/MAL-Sync-Backup/master/data/%s/anime/%s.json", al, id)).End()
 	if err != nil {
 		log.Fatal(err)
 
