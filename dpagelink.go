@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,11 @@ type Link struct {
 	File  string
 	Label string
 	Type  string
+}
+
+type Fresponse struct {
+	Source   []Link `json:"source"`
+	SourceBk []Link `json:"source_bk"`
 }
 
 func getDpageLink(aid string, epno string) string {
@@ -74,7 +80,25 @@ func decryptDLink(iurl string) []Link {
 	resp, _ := client.Do(req)
 	//defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Println(string(body))
+	//jsonResp := string(body)
+
+	var Fresp Fresponse
+
+	if err := json.Unmarshal(body, &Fresp); err != nil {
+		return []Link{}
+	}
+
+	for _, eachSource := range Fresp.Source {
+		fmt.Println("File ", eachSource.File)
+		fmt.Println("Label ", eachSource.Label)
+		fmt.Println("Type ", eachSource.Type)
+	}
+
+	for _, eachSource := range Fresp.SourceBk {
+		fmt.Println("File ", eachSource.File)
+		fmt.Println("Label ", eachSource.Label)
+		fmt.Println("Type ", eachSource.Type)
+	}
 	return []Link{}
 
 }
