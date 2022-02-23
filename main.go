@@ -12,8 +12,8 @@ func main() {
 	//BASE_URL = finalURL(BASE_URL)
 	//fmt.Println(BASE_URL)
 
-	var iurl string
-	fmt.Scanln(&iurl)
+	// var iurl string
+	// fmt.Scanln(&iurl)
 
 	// an, _ := gogoframanilist(iurl)
 	// fmt.Println("Sub = ", an.Sub)
@@ -22,6 +22,9 @@ func main() {
 	// fmt.Println(ep)
 	//fmt.Println(getDpageLink(iurl, "100"))
 
-	decryptDLink("https://gogoplay.io/embedplus?id=MjgwNzY=&token=n-SJr3LziDVYK-tNM2fWHw&expires=1645533075")
+	dp := getDpageLink("midori-days", "2")
+	fmt.Println(dp)
+
+	fmt.Println(decryptDLink(dp))
 
 }

@@ -21,7 +21,7 @@ func gogoframanilist(iurl string) (ret GogoAnime, err error) {
 	if err != nil {
 		return ret, err
 	}
-	ret, err = getGogoAnimeLinks(aid)
+	ret, err = getGogoAnimeLinks(aid, "anilist")
 	if err != nil {
 		return ret, err
 	}
@@ -70,7 +70,7 @@ func getIDfromMALurl(iurl string) (id string, err error) {
 	return params[2], nil
 }
 
-func getGogoAnimeLinks(id string) (al string, ret GogoAnime, err error) {
+func getGogoAnimeLinks(id string, al string) (ret GogoAnime, err error) {
 	response, err := client.Get(fmt.Sprintf("https://raw.githubusercontent.com/MALSync/MAL-Sync-Backup/master/data/%s/anime/%s.json", al, id)).End()
 	if err != nil {
 		log.Fatal(err)

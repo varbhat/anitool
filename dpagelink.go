@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/aes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -60,16 +61,31 @@ func getDpageLink(aid string, epno string) string {
 
 func decryptDLink(iurl string) []Link {
 	ajax_url := "https://gogoplay.io/encrypt-ajax.php"
-	secret_key := "3235373436353338353932393338333936373634363632383739383333323838"
-	iv := "34323036393133333738303038313335"
-	rtime := "69420691337800813569"
+	//secret_key := "3235373436353338353932393338333936373634363632383739383333323838"
+	// iv := "34323036393133333738303038313335"
+	//rtime := "69420691337800813569"
+	rtime := "00000000000000000000"
+
+	response, err := client.Get(iurl).End()
+	if err != nil {
+		return []Link{}
+	}
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(response.String()))
+	if err != nil {
+		return []Link{}
+	}
+
+	encrypted := doc.Find("script[data-name='crypto']").AttrOr("data-value", "")
+	iv := doc.Find("script[data-name='ts']").AttrOr("data-value", "")
+	secret_key := aes256decrypt(encrypted, []byte(iv+iv), []byte(iv), aes.BlockSize)
 
 	iUrl, err := url.Parse(iurl)
 	if err != nil {
 		return []Link{}
 	}
 	video_id := iUrl.Query().Get("id")
-	ajax := AES256Encrypt(secret_key, iv, video_id)
+
+	ajax := aes256encrypt([]byte(video_id), []byte(secret_key), []byte("0000000000000000"), aes.BlockSize)
 
 	var rbody = []byte(fmt.Sprintf("id=%s&time=%s", ajax, rtime))
 	req, _ := http.NewRequest("POST", ajax_url, bytes.NewBuffer(rbody))
