@@ -25,7 +25,7 @@ type Fresponse struct {
 	SourceBk []Link `json:"source_bk"`
 }
 
-func getDpageLink(aid string, epno string) string {
+func getDpageLink(aid string, epno string) (ret []string) {
 	paramlist := []string{"-episode-%s", "-%s", "-episode-%s-1", "-camrip-episode-%s"}
 	for _, eachparam := range paramlist {
 		response, err := client.Get(fmt.Sprintf(BASE_URL+"/"+aid+eachparam, epno)).End()
@@ -41,14 +41,14 @@ func getDpageLink(aid string, epno string) string {
 			dv := doc.Find("a[data-video]")
 			for _, eachlink := range dv.Nodes {
 				linko := goquery.NewDocumentFromNode(eachlink)
-				if linko.AttrOr("rel", "rel") != "100" {
-					continue
-				}
+				// if linko.AttrOr("rel", "rel") != "100" {
+				// 	continue
+				// }
 				eachlinku := linko.AttrOr("data-video", "")
 				if strings.HasPrefix(eachlinku, "//") {
-					return "https:" + eachlinku
+					ret = append(ret, "https:"+eachlinku)
 				} else {
-					return eachlinku
+					ret = append(ret, eachlinku)
 				}
 			}
 		} else {
@@ -56,7 +56,7 @@ func getDpageLink(aid string, epno string) string {
 		}
 
 	}
-	return ""
+	return
 }
 
 func decryptDLink(iurl string) []Link {
