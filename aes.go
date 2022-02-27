@@ -12,11 +12,11 @@ import (
 func AES256Encrypt(hexkey string, hexiv string, text string) string {
 	key, err := hex.DecodeString(hexkey)
 	if err != nil {
-		panic(err)
+		return ""
 	}
 	iv, err := hex.DecodeString(hexiv)
 	if err != nil {
-		panic(err)
+		return ""
 	}
 	return aes256encrypt([]byte(text), key, iv, aes.BlockSize)
 }
