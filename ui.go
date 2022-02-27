@@ -25,11 +25,13 @@ const (
 )
 
 type model struct {
-	uiState    uiState
-	textInput  textinput.Model
-	animeList  list.Model
-	err        error
-	WindowSize tea.WindowSizeMsg
+	uiState     uiState
+	textInput   textinput.Model
+	animeList   list.Model
+	episodeList list.Model
+	selAnime    string
+	err         error
+	WindowSize  tea.WindowSizeMsg
 }
 
 func mainModel() model {
@@ -101,12 +103,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.WindowSizeMsg:
 			top, right, bottom, left := docStyle.GetMargin()
 			m.animeList.SetSize(msg.Width-left-right, msg.Height-top-bottom)
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyEnter:
+				it := m.animeList.SelectedItem()
+				switch It := it.(type) {
+				case GSRes:
+					m.selAnime = It.URL
+					m.uiState = uiEpisodePage
+					eps := []list.Item{}
+					epc, _ := getEpsCountfromURL("https://gogoanime.fi" + m.selAnime)
+					for eachep := 1; eachep <= epc; eachep++ {
+						epvi := Epview{Episode: eachep}
+						eps = append(eps, epvi)
+					}
+					m.episodeList = list.New(eps, list.NewDefaultDelegate(), 0, 0)
+					m.episodeList.Title = "Select Episode"
+					top, right, bottom, left := docStyle.GetMargin()
+					m.episodeList.SetSize(m.WindowSize.Width-left-right, m.WindowSize.Height-top-bottom)
+					return m, nil
+
+				}
+
+			}
 		}
 
 		var cmd tea.Cmd
 		m.animeList, cmd = m.animeList.Update(msg)
 		return m, cmd
-
+	case uiEpisodePage:
+		var cmd tea.Cmd
+		m.episodeList, cmd = m.episodeList.Update(msg)
+		return m, cmd
 	default:
 		return m, nil
 	}
@@ -122,6 +150,8 @@ func (m model) View() string {
 		) + "\n"
 	case uiAnimeListPage:
 		return docStyle.Render(m.animeList.View())
+	case uiEpisodePage:
+		return docStyle.Render(m.episodeList.View())
 	case uiPlayPage:
 		return "hello"
 	default:

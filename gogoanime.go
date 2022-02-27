@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/aerogo/http/client"
 )
 
 func gogoStreamLinks(gogobaseurl string, aid string, epno string) (ret chan string) {
@@ -55,16 +54,28 @@ func (i GSRes) Title() string       { return i.ATitle }
 func (i GSRes) Description() string { return i.Released }
 func (i GSRes) FilterValue() string { return i.ATitle }
 
+type Epview struct {
+	Episode int
+}
+
+func (i Epview) Title() string       { return "Episode " + strconv.Itoa(i.Episode) }
+func (i Epview) FilterValue() string { return strconv.Itoa(i.Episode) }
+func (i Epview) Description() string { return "" }
+
 func getEpsCount(gogobaseurl string, gid string) (ret int, err error) {
+	return getEpsCountfromURL(gogobaseurl + "/category/" + gid)
+}
+
+func getEpsCountfromURL(gogourl string) (ret int, err error) {
 	ret = 0
 
-	response, err := client.Get(gogobaseurl + "/category/" + gid).End()
+	response, err := http.Get(gogourl)
 	if err != nil {
 		return 0, err
 
 	}
 	// Load the HTML document
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(response.String()))
+	doc, err := goquery.NewDocumentFromReader(response.Body)
 	if err != nil {
 		return 0, err
 	}
@@ -114,11 +125,11 @@ func getGogoSearchRes(gogobaseurl string, searchterm string, page int) (Res chan
 	Res = make(chan GSRes)
 	go func() {
 		searchquery := url.QueryEscape(searchterm)
-		response, err := client.Get(gogobaseurl + "/search.html?keyword=" + searchquery + "&page=" + strconv.Itoa(page)).End()
+		response, err := http.Get(gogobaseurl + "/search.html?keyword=" + searchquery + "&page=" + strconv.Itoa(page))
 		if err != nil {
 			return
 		}
-		doc, err := goquery.NewDocumentFromReader(strings.NewReader(response.String()))
+		doc, err := goquery.NewDocumentFromReader(response.Body)
 		if err != nil {
 			return
 		}
@@ -131,7 +142,7 @@ func getGogoSearchRes(gogobaseurl string, searchterm string, page int) (Res chan
 			eachres.ATitle = strings.TrimSpace(linksel.AttrOr("title", ""))
 			relsel := s.Find(`p[class="released"]`)
 			eachres.Released = strings.TrimSpace(strings.Replace(relsel.Text(), "Released: ", "", -1))
-			if eachres.URL != "" && eachres.ATitle != "" {
+			if eachres.URL != "" {
 				Res <- eachres
 			}
 		})
@@ -149,8 +160,8 @@ func searchGogoAll(gogobaseurl string, searchterm string) (Res chan GSRes) {
 
 		pagecount := getPagecount(gogobaseurl, searchterm)
 		var wg sync.WaitGroup
-		for ep := 0; ep <= pagecount; ep++ {
-			retch := getGogoSearchRes(gogobaseurl, searchterm, pagecount)
+		for ep := 1; ep <= pagecount; ep++ {
+			retch := getGogoSearchRes(gogobaseurl, searchterm, ep)
 			wg.Add(1)
 			go func(c <-chan GSRes) {
 				defer wg.Done()
