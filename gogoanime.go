@@ -47,9 +47,13 @@ func gogoStreamLinks(gogobaseurl string, aid string, epno string) (ret chan stri
 
 type GSRes struct {
 	URL      string
-	Title    string
+	ATitle   string
 	Released string
 }
+
+func (i GSRes) Title() string       { return i.ATitle }
+func (i GSRes) Description() string { return i.Released }
+func (i GSRes) FilterValue() string { return i.ATitle }
 
 func getEpsCount(gogobaseurl string, gid string) (ret int, err error) {
 	ret = 0
@@ -123,11 +127,11 @@ func getGogoSearchRes(gogobaseurl string, searchterm string, page int) (Res chan
 			var eachres GSRes
 			psel := s.Find(`p[class="name"]`)
 			linksel := psel.Find(`a[href][title]`)
-			eachres.URL = linksel.AttrOr("href", "")
-			eachres.Title = linksel.AttrOr("title", "")
+			eachres.URL = strings.TrimSpace(linksel.AttrOr("href", ""))
+			eachres.ATitle = strings.TrimSpace(linksel.AttrOr("title", ""))
 			relsel := s.Find(`p[class="released"]`)
-			eachres.Released = strings.Replace(relsel.Text(), "Released: ", "", -1)
-			if eachres.URL != "" && eachres.Title != "" {
+			eachres.Released = strings.TrimSpace(strings.Replace(relsel.Text(), "Released: ", "", -1))
+			if eachres.URL != "" && eachres.ATitle != "" {
 				Res <- eachres
 			}
 		})
