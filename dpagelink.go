@@ -15,9 +15,10 @@ import (
 )
 
 type Link struct {
-	File  string
-	Label string
-	Type  string
+	File    string
+	Label   string
+	Type    string
+	Referer string
 }
 
 type Fresponse struct {
@@ -59,7 +60,7 @@ func getDpageLink(aid string, epno string) (ret []string) {
 	return
 }
 
-func decryptDLink(iurl string) []Link {
+func decryptDLink(iurl string) (Ret []Link) {
 	ajax_url := "https://gogoplay.io/encrypt-ajax.php"
 	var rtime string
 	var secret_key string
@@ -112,16 +113,22 @@ func decryptDLink(iurl string) []Link {
 	}
 
 	for _, eachSource := range Fresp.Source {
-		fmt.Println("File ", eachSource.File)
-		fmt.Println("Label ", eachSource.Label)
-		fmt.Println("Type ", eachSource.Type)
+		var er Link
+		er.File = eachSource.File
+		er.Label = eachSource.Label
+		er.Type = eachSource.Type
+		er.Referer = iurl
+		Ret = append(Ret, er)
 	}
 
 	for _, eachSource := range Fresp.SourceBk {
-		fmt.Println("File ", eachSource.File)
-		fmt.Println("Label ", eachSource.Label)
-		fmt.Println("Type ", eachSource.Type)
+		var er Link
+		er.File = eachSource.File
+		er.Label = eachSource.Label + "(Backup)"
+		er.Type = eachSource.Type
+		er.Referer = iurl
+		Ret = append(Ret, er)
 	}
-	return []Link{}
+	return
 
 }
