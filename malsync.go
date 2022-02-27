@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/aerogo/http/client"
 	"github.com/tidwall/gjson"
 )
 
@@ -71,12 +72,12 @@ func getIDfromMALurl(iurl string) (id string, err error) {
 }
 
 func getGogoAnimeLinks(id string, al string) (ret GogoAnime, err error) {
-	response, err := client.Get(fmt.Sprintf("https://raw.githubusercontent.com/MALSync/MAL-Sync-Backup/master/data/%s/anime/%s.json", al, id)).End()
+	response, err := http.Get(fmt.Sprintf("https://raw.githubusercontent.com/MALSync/MAL-Sync-Backup/master/data/%s/anime/%s.json", al, id))
 	if err != nil {
 		log.Fatal(err)
-
 	}
-	result := gjson.Get(response.String(), "Pages.Gogoanime")
+	respb, _ := io.ReadAll(response.Body)
+	result := gjson.Get(string(respb), "Pages.Gogoanime")
 	subdone := false
 	dubdone := false
 	result.ForEach(func(key, value gjson.Result) bool {
