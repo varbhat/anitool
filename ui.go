@@ -49,7 +49,6 @@ func (m model) Init() tea.Cmd {
 	switch m.uiState {
 	case uiMainPage:
 		return tea.Batch(tea.EnterAltScreen, textinput.Blink)
-
 	case uiAnimeListPage:
 		return nil
 	}
@@ -69,10 +68,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.WindowSize = msg
 	case chan GSRes:
-		for er := range msg {
-			m.animeList.InsertItem(-1, er)
+		itemsg, notclosed := <-msg
+		if !notclosed {
+			return m, nil
 		}
-
+		m.animeList.InsertItem(-1, itemsg)
+		return m, func() tea.Msg { return msg }
 	}
 	switch m.uiState {
 	case uiMainPage:
@@ -81,13 +82,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.Type {
 			case tea.KeyEnter:
 				items := []list.Item{}
-
 				m.animeList = list.New(items, list.NewDefaultDelegate(), 0, 0)
 				m.animeList.Title = "Anime Search Results"
 				m.uiState = uiAnimeListPage
 				top, right, bottom, left := docStyle.GetMargin()
 				m.animeList.SetSize(m.WindowSize.Width-left-right, m.WindowSize.Height-top-bottom)
-
 				return m, func() tea.Msg {
 					return searchGogoAll("https://gogoanime.fi", m.textInput.Value())
 				}
@@ -122,7 +121,6 @@ func (m model) View() string {
 			"(esc to quit)",
 		) + "\n"
 	case uiAnimeListPage:
-
 		return docStyle.Render(m.animeList.View())
 	case uiPlayPage:
 		return "hello"
