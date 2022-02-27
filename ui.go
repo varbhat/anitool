@@ -8,32 +8,26 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	appStyle = lipgloss.NewStyle().Padding(1, 2)
+type uiState int
 
-	titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#25A065")).
-			Padding(0, 1)
-
-	statusMessageStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
-				Render
+const (
+	uiMainPage uiState = iota
+	uiSearchPage
+	uiSettingsPage
+	uiEpisodePage
+	uiPlayPage
 )
-
-type errMsg error
 
 type model struct {
+	uiState   uiState
 	textInput textinput.Model
 	err       error
 }
 
 func mainModel() model {
 	ti := textinput.New()
-	ti.Placeholder = "Pikachu"
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 20
@@ -49,29 +43,35 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
-			return m, tea.Quit
+	switch m.uiState {
+	case uiMainPage, uiSearchPage:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+				return m, tea.Quit
+			}
 		}
 
-	// We handle errors just like any other message
-	case errMsg:
-		m.err = msg
+		var cmd tea.Cmd
+		m.textInput, cmd = m.textInput.Update(msg)
+		return m, cmd
+	default:
 		return m, nil
 	}
-
-	m.textInput, cmd = m.textInput.Update(msg)
-	return m, cmd
 }
 
 func (m model) View() string {
-	return fmt.Sprintf(
-		"What’s your favorite Pokémon?\n\n%s\n\n%s",
-		m.textInput.View(),
-		"(esc to quit)",
-	) + "\n"
+	switch m.uiState {
+	case uiMainPage, uiSearchPage:
+		return fmt.Sprintf(
+			"Search Anime: \n\n%s\n\n%s",
+			m.textInput.View(),
+			"(esc to quit)",
+		) + "\n"
+	case uiPlayPage:
+		return "hello"
+	default:
+		return ""
+	}
 }
