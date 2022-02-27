@@ -1,18 +1,15 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 func main() {
-	var iurl string
-	fmt.Scanln(&iurl)
-	res := searchGogoAll("https://gogoanime.fi", iurl)
-	// for _, each := range res {
-	// 	fmt.Print(each.File + "  " + each.Label + "  " + each.Type + " " + each.Referer)
-	// 	fmt.Println()
-	// }
-	for each := range res {
-		fmt.Println(each.Released, each.Title, each.URL)
+	if err := tea.NewProgram(mainModel()).Start(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
 	}
-	fmt.Println("THE End")
-
 }
