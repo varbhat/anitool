@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -25,71 +24,6 @@ func finalURL(url string) (ret string, err error) {
 		return "", err
 	}
 	return resp.Request.URL.String(), nil
-}
-
-func gogoStreamLinks(aid string, epno string) (Ret chan Link) {
-	var gogobaseurl string = "https://gogoanime.fi"
-	gogobaseurl, err := finalURL(gogobaseurl)
-	if err != nil {
-		return
-	}
-	Ret = make(chan Link)
-	go func() {
-		var wg sync.WaitGroup
-		paramlist := []string{"-episode-%s", "-%s", "-episode-%s-1", "-camrip-episode-%s"}
-		for _, eachparam := range paramlist {
-			response, err := http.Get(fmt.Sprintf(gogobaseurl+"/"+aid+eachparam, epno))
-			if err != nil {
-				continue
-			}
-			doc, err := goquery.NewDocumentFromReader(response.Body)
-			if err != nil {
-				continue
-			}
-
-			if doc.Find(".entry-title").Text() != "404" {
-				dv := doc.Find("a[data-video]")
-				for _, eachlink := range dv.Nodes {
-					linko := goquery.NewDocumentFromNode(eachlink)
-					eachlinku := linko.AttrOr("data-video", "")
-					if strings.HasPrefix(eachlinku, "//") {
-						eachlinku = "https:" + eachlinku
-					}
-					if strings.Contains(eachlinku, "gogo") || strings.Contains(eachlinku, "goload") {
-						wg.Add(1)
-						go func() {
-							defer wg.Done()
-							for _, eachretlink := range GoGoCDN(eachlinku) {
-								Ret <- eachretlink
-							}
-						}()
-					} else if strings.Contains(eachlinku, "sbplay") {
-						wg.Add(1)
-						go func() {
-							defer wg.Done()
-							for _, eachretlink := range StreamSB(eachlinku) {
-								Ret <- eachretlink
-							}
-						}()
-					} else if strings.Contains(eachlinku, "fplayer") || strings.Contains(eachlinku, "fembed") {
-						wg.Add(1)
-						go func() {
-							defer wg.Done()
-							for _, eachretlink := range Fplayer(eachlinku) {
-								Ret <- eachretlink
-							}
-						}()
-					}
-				}
-			} else {
-				break
-			}
-
-			wg.Wait()
-			close(Ret)
-		}
-	}()
-	return
 }
 
 func aes256encrypt(plaintext []byte, key []byte, iv []byte, blockSize int) (ret string, err error) {
