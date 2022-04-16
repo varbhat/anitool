@@ -1,15 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/tidwall/gjson"
 )
 
 type GogoAnime struct {
@@ -72,47 +70,42 @@ func getIDfromMALurl(iurl string) (id string, err error) {
 }
 
 func getGogoAnimeLinks(id string, al string) (ret GogoAnime, err error) {
+	var MSBResp struct {
+		Pages struct {
+			GGA map[string]struct {
+				URL string `json:"url"`
+			} `json:"Gogoanime"`
+		} `json:"pages"`
+	}
 	response, err := http.Get(fmt.Sprintf("https://raw.githubusercontent.com/MALSync/MAL-Sync-Backup/master/data/%s/anime/%s.json", al, id))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
-	respb, _ := io.ReadAll(response.Body)
-	result := gjson.Get(string(respb), "Pages.Gogoanime")
-	subdone := false
-	dubdone := false
-	result.ForEach(func(key, value gjson.Result) bool {
-		if strings.HasSuffix(key.String(), "dub") {
-			val := value.Get("url")
-			if !value.Exists() {
-				println("no url")
-			} else {
-				u, err := url.Parse(val.String())
-				if err != nil {
-					ret.Dub = ""
-				}
-				ret.Dub = strings.TrimPrefix(u.Path, "/category/")
+	respb, err := io.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = json.Unmarshal(respb, &MSBResp)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for eachtitle, eachresp := range MSBResp.Pages.GGA {
+		if strings.HasSuffix(eachtitle, "dub") {
+			u, err := url.Parse(eachresp.URL)
+			if err != nil {
+				ret.Dub = ""
 			}
-			dubdone = true
+			ret.Dub = strings.TrimPrefix(u.Path, "/category/")
 		} else {
-			val := value.Get("url")
-			if !value.Exists() {
-				println("no url")
-			} else {
-				u, err := url.Parse(val.String())
-				if err != nil {
-					ret.Dub = ""
-				}
-				ret.Sub = strings.TrimPrefix(u.Path, "/category/")
+			u, err := url.Parse(eachresp.URL)
+			if err != nil {
+				ret.Sub = ""
 			}
-			subdone = true
+			ret.Sub = strings.TrimPrefix(u.Path, "/category/")
 		}
-		if subdone && dubdone {
-			return false
-		}
-		return true // keep iterating
+	}
 
-	})
-
-	return ret, nil
-
+	return
 }
