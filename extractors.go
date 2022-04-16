@@ -131,92 +131,106 @@ func GoGoCDN(iurl string) (Ret []Link) {
 		Source   []Link `json:"source"`
 		SourceBk []Link `json:"source_bk"`
 	}
-	ajax_url := "https://gogoplay.io/encrypt-ajax.php"
-	var rtime string
-	var secret_key string
-	var ajax string
 
-	// Get video id
-	iUrl, err := url.Parse(iurl)
-	if err != nil {
-		return []Link{}
-	}
-	video_id := iUrl.Query().Get("id")
-	response, err := http.Get(iurl)
-	if err != nil {
-		return []Link{}
-	}
-	doc, err := goquery.NewDocumentFromReader(response.Body)
-	if err != nil {
-		return []Link{}
-	}
+	secret_key := "93106165734640459728346589106791"
+	second_key := "97952160493714852094564712118349"
+	iv := "8244002440089157"
 
-	encrypted := doc.Find("script[data-name='crypto']").AttrOr("data-value", "")
-	iv := doc.Find("script[data-name='ts']").AttrOr("data-value", "")
-	if encrypted == "" || iv == "" {
-		secret_key = "3235373436353338353932393338333936373634363632383739383333323838"
-		iv = "34323036393133333738303038313335"
-		rtime = "69420691337800813569"
-		key, err := hex.DecodeString(secret_key)
+	if strings.Contains(iurl, "streaming.php") {
+		iUrl, err := url.Parse(iurl)
 		if err != nil {
+			return []Link{}
+		}
+
+		response, err := http.Get(iurl)
+		if err != nil {
+			return []Link{}
+		}
+
+		doc, err := goquery.NewDocumentFromReader(response.Body)
+		if err != nil {
+			return []Link{}
+		}
+
+		encrypted := doc.Find("script[data-name='episode']").AttrOr("data-value", "")
+
+		decrypted, err := aes256decrypt(encrypted, []byte(secret_key), []byte(iv), aes.BlockSize)
+		if err != nil {
+			fmt.Println("err ", err)
+		}
+		vididno := strings.IndexRune(decrypted, '&')
+		vidid := decrypted[:vididno]
+		vidend := decrypted[vididno:]
+
+		encryptedvidid, err := aes256encrypt([]byte(vidid), []byte(secret_key), []byte(iv), aes.BlockSize)
+		if err != nil {
+			fmt.Println("err ", err)
+		}
+
+		ajax_url := fmt.Sprintf("https://%s/encrypt-ajax.php?id=%s%s&alias=%s", iUrl.Host, encryptedvidid, vidend, vidid)
+
+		req, err := http.NewRequest("POST", ajax_url, bytes.NewBuffer([]byte(ajax_url)))
+		if err != nil {
+			fmt.Println(err)
 			return
 		}
-		iv, err := hex.DecodeString(iv)
+		req.Header.Set("Referer", iUrl.Host)
+		req.Header.Set("x-requested-with", "XMLHttpRequest")
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
 		if err != nil {
+			fmt.Println(err)
 			return
 		}
-		ajax, err = aes256encrypt([]byte(video_id), key, iv, aes.BlockSize)
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+
+		var ExtractData struct {
+			Data string `json:"data"`
+		}
+
+		err = json.Unmarshal(body, &ExtractData)
 		if err != nil {
+			fmt.Println("Err ", err)
+		}
+		data, err := aes256decrypt(ExtractData.Data, []byte(second_key), []byte(iv), aes.BlockSize)
+		if err != nil {
+			fmt.Println("Err ", err)
 			return
 		}
-	} else {
-		rtime = "00000000000000000000"
-		secret_key, err = aes256decrypt(encrypted, []byte(iv+iv), []byte(iv), aes.BlockSize)
-		if err != nil {
-			return
+
+		var Fresp Fresponse
+
+		if err := json.Unmarshal([]byte(data), &Fresp); err != nil {
+			return []Link{}
 		}
-		ajax, err = aes256encrypt([]byte(video_id), []byte(secret_key), []byte("0000000000000000"), aes.BlockSize)
-		if err != nil {
-			return
+
+		for _, eachSource := range Fresp.Source {
+			var er Link
+			er.File = eachSource.File
+			er.Label = eachSource.Label
+			er.Type = eachSource.Type
+			er.Referer = iurl
+			Ret = append(Ret, er)
 		}
-	}
 
-	var rbody = []byte(fmt.Sprintf("id=%s&time=%s", ajax, rtime))
-	req, _ := http.NewRequest("POST", ajax_url, bytes.NewBuffer(rbody))
-	req.Header.Set("x-requested-with", "XMLHttpRequest")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		for _, eachSource := range Fresp.SourceBk {
+			var er Link
+			er.File = eachSource.File
+			er.Label = eachSource.Label + "(Backup)"
+			er.Type = eachSource.Type
+			er.Referer = iurl
+			Ret = append(Ret, er)
+		}
 
-	client := &http.Client{}
-	resp, _ := client.Do(req)
-	//defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	//jsonResp := string(body)
-
-	var Fresp Fresponse
-
-	if err := json.Unmarshal(body, &Fresp); err != nil {
-		return []Link{}
-	}
-
-	for _, eachSource := range Fresp.Source {
-		var er Link
-		er.File = eachSource.File
-		er.Label = eachSource.Label
-		er.Type = eachSource.Type
-		er.Referer = iurl
-		Ret = append(Ret, er)
-	}
-
-	for _, eachSource := range Fresp.SourceBk {
-		var er Link
-		er.File = eachSource.File
-		er.Label = eachSource.Label + "(Backup)"
-		er.Type = eachSource.Type
-		er.Referer = iurl
-		Ret = append(Ret, er)
+		for each := range Ret {
+			fmt.Printf("%v", each)
+		}
+		return
 	}
 	return
-
 }
 
 func Fplayer(iurl string) (Ret []Link) {
@@ -259,16 +273,11 @@ func StreamSB(iurl string) string {
 	}
 	params := strings.Split(u.Path, "/")
 	paramlen := len(params)
-	if paramlen < 2 {
+	if paramlen < 2 || params[1] != "e" {
 		return ""
 
 	}
-	if params[1] != "e" {
-		return ""
-	}
-	sourceid := hex.EncodeToString([]byte(params[2]))
-	jsonApi := fmt.Sprintf(jsonlink, sourceid)
-	req, err := http.NewRequest("GET", jsonApi, nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(jsonlink, hex.EncodeToString([]byte(params[2]))), nil)
 	if err != nil {
 		return ""
 	}
@@ -283,6 +292,6 @@ func StreamSB(iurl string) string {
 	if err != nil {
 		return ""
 	}
-	fmt.Println(respb)
+	fmt.Println(string(respb))
 	return ""
 }
