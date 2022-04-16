@@ -14,14 +14,15 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
-func gogoStreamLinks(gogobaseurl string, aid string, epno string) (ret chan string) {
-	ret = make(chan string)
+func gogoStreamLinks(gogobaseurl string, aid string, epno string) (Ret chan Link) {
+	Ret = make(chan Link)
 	go func() {
-		defer close(ret)
+		var wg sync.WaitGroup
 		paramlist := []string{"-episode-%s", "-%s", "-episode-%s-1", "-camrip-episode-%s"}
 		for _, eachparam := range paramlist {
 			response, err := http.Get(fmt.Sprintf(gogobaseurl+"/"+aid+eachparam, epno))
@@ -39,15 +40,40 @@ func gogoStreamLinks(gogobaseurl string, aid string, epno string) (ret chan stri
 					linko := goquery.NewDocumentFromNode(eachlink)
 					eachlinku := linko.AttrOr("data-video", "")
 					if strings.HasPrefix(eachlinku, "//") {
-						ret <- "https:" + eachlinku
-					} else {
-						ret <- eachlinku
+						eachlinku = "https:" + eachlinku
+					}
+					if strings.Contains(eachlinku, "gogo") || strings.Contains(eachlinku, "goload") {
+						wg.Add(1)
+						go func() {
+							defer wg.Done()
+							for _, eachretlink := range GoGoCDN(eachlinku) {
+								Ret <- eachretlink
+							}
+						}()
+					} else if strings.Contains(eachlinku, "sbplay") {
+						wg.Add(1)
+						go func() {
+							defer wg.Done()
+							for _, eachretlink := range StreamSB(eachlinku) {
+								Ret <- eachretlink
+							}
+						}()
+					} else if strings.Contains(eachlinku, "fplayer") || strings.Contains(eachlinku, "fembed") {
+						wg.Add(1)
+						go func() {
+							defer wg.Done()
+							for _, eachretlink := range Fplayer(eachlinku) {
+								Ret <- eachretlink
+							}
+						}()
 					}
 				}
 			} else {
 				break
 			}
 
+			wg.Wait()
+			close(Ret)
 		}
 	}()
 	return
