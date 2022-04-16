@@ -42,13 +42,7 @@ func (g *GogoAnime) FromMAL(iurl string) (err error) {
 	return nil
 }
 
-func (g *GogoAnime) GetLinks(subordub string, epno string) (Ret chan Link) {
-	var aid string
-	if subordub == "dub" {
-		aid = g.Dub
-	} else {
-		aid = g.Sub
-	}
+func (g *GogoAnime) GetLinks(aid string, epno string) (Ret chan Link) {
 	var gogobaseurl string = "https://gogoanime.fi"
 	gogobaseurl, err := finalURL(gogobaseurl)
 	if err != nil {

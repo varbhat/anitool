@@ -98,11 +98,11 @@ func GoGoCDN(iurl string) (Ret []Link) {
 		SourceBk []Link `json:"source_bk"`
 	}
 
-	secret_key := "93106165734640459728346589106791"
-	second_key := "97952160493714852094564712118349"
-	iv := "8244002440089157"
-
 	if strings.Contains(iurl, "streaming.php") {
+		var secret_key string
+		var second_key string
+		var iv string
+
 		iUrl, err := url.Parse(iurl)
 		if err != nil {
 			return []Link{}
@@ -118,22 +118,48 @@ func GoGoCDN(iurl string) (Ret []Link) {
 			return []Link{}
 		}
 
-		encrypted := doc.Find("script[data-name='episode']").AttrOr("data-value", "")
+		cons := doc.Find(`[class^="container-"]:not(.wrapper)`)
+		wrcons := doc.Find(`[class*="wrapper container-"]`)
+		vidconts := doc.Find(`[class*="videocontent-"]`)
 
-		decrypted, err := aes256decrypt(encrypted, []byte(secret_key), []byte(iv), aes.BlockSize)
-		if err != nil {
-			fmt.Println("err ", err)
+		consText := cons.AttrOr("class", "")
+		wrconsText := wrcons.AttrOr("class", "")
+		vidcontsText := vidconts.AttrOr("class", "")
+
+		for _, eachIterStr := range strings.Fields(consText) {
+			if strings.Contains(eachIterStr, "container-") {
+				secret_key = strings.TrimPrefix(eachIterStr, "container-")
+				break
+			}
 		}
-		vididno := strings.IndexRune(decrypted, '&')
-		vidid := decrypted[:vididno]
-		vidend := decrypted[vididno:]
+
+		for _, eachIterStr := range strings.Fields(wrconsText) {
+			if strings.Contains(eachIterStr, "container-") {
+				iv = strings.TrimPrefix(eachIterStr, "container-")
+				break
+			}
+		}
+
+		for _, eachIterStr := range strings.Fields(vidcontsText) {
+			if strings.Contains(eachIterStr, "videocontent-") {
+				second_key = strings.TrimPrefix(eachIterStr, "videocontent-")
+				break
+			}
+		}
+
+		// fmt.Println(secret_key, iv, second_key)
+		vidid := iUrl.Query().Get("id")
+		if vidid == "" {
+			return
+		}
 
 		encryptedvidid, err := aes256encrypt([]byte(vidid), []byte(secret_key), []byte(iv), aes.BlockSize)
 		if err != nil {
 			fmt.Println("err ", err)
+			return
 		}
 
-		ajax_url := fmt.Sprintf("https://%s/encrypt-ajax.php?id=%s%s&alias=%s", iUrl.Host, encryptedvidid, vidend, vidid)
+		ajax_url := fmt.Sprintf("https://%s/encrypt-ajax.php?id=%s&alias=%s", iUrl.Host, encryptedvidid, vidid)
 
 		req, err := http.NewRequest("POST", ajax_url, bytes.NewBuffer([]byte(ajax_url)))
 		if err != nil {
