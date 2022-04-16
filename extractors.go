@@ -237,8 +237,7 @@ func Fplayer(iurl string) (Ret []Link) {
 	type FplayerResp struct {
 		Data []Link `json:"data"`
 	}
-	apiurl := strings.Replace(iurl, "/v/", "/api/source/", -1)
-	req, err := http.NewRequest("POST", apiurl, nil)
+	req, err := http.NewRequest("POST", strings.Replace(iurl, "/v/", "/api/source/", -1), nil)
 	if err != nil {
 		return
 	}
@@ -263,35 +262,57 @@ func Fplayer(iurl string) (Ret []Link) {
 	return
 }
 
-func StreamSB(iurl string) string {
+func StreamSB(iurl string) (Ret []Link) {
+	var SSBresp struct {
+		SSD struct {
+			File   string `json:"file"`
+			Title  string `json:"title"`
+			Backup string `json:"backup"`
+		} `json:"stream_data"`
+	}
 	ssburl := "https://sbplay2.com"
 	jsonlink := ssburl + "/sources40/7361696b6f757c7c%s7c7c7361696b6f757c7c73747265616d7362/7361696b6f757c7c363136653639366436343663363136653639366436343663376337633631366536393664363436633631366536393664363436633763376336313665363936643634366336313665363936643634366337633763373337343732363536313664373336327c7c7361696b6f757c7c73747265616d7362"
 
 	u, err := url.Parse(iurl)
 	if err != nil {
-		return ""
+		return
 	}
 	params := strings.Split(u.Path, "/")
 	paramlen := len(params)
 	if paramlen < 2 || params[1] != "e" {
-		return ""
+		return
 
 	}
 	req, err := http.NewRequest("GET", fmt.Sprintf(jsonlink, hex.EncodeToString([]byte(params[2]))), nil)
 	if err != nil {
-		return ""
+		return
 	}
 	req.Header.Set("watchsb", "streamsb")
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Fatal(err)
-
+		return
 	}
 	defer response.Body.Close()
 	respb, err := io.ReadAll(response.Body)
 	if err != nil {
-		return ""
+		return
 	}
-	fmt.Println(string(respb))
-	return ""
+	err = json.Unmarshal(respb, &SSBresp)
+	if err != nil {
+		return
+	}
+	Ret = append(Ret, Link{
+		File:    SSBresp.SSD.File,
+		Label:   SSBresp.SSD.Title,
+		Type:    "hls",
+		Referer: iurl,
+	})
+	Ret = append(Ret, Link{
+		File:    SSBresp.SSD.Backup,
+		Label:   SSBresp.SSD.Title + " (Backup)",
+		Type:    "hls",
+		Referer: iurl,
+	})
+	return
 }
