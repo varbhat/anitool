@@ -13,13 +13,28 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
-func gogoStreamLinks(gogobaseurl string, aid string, epno string) (Ret chan Link) {
+func finalURL(url string) (ret string, err error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	return resp.Request.URL.String(), nil
+}
+
+func gogoStreamLinks(aid string, epno string) (Ret chan Link) {
+	var gogobaseurl string = "https://gogoanime.fi"
+	gogobaseurl, err := finalURL(gogobaseurl)
+	if err != nil {
+		return
+	}
 	Ret = make(chan Link)
 	go func() {
 		var wg sync.WaitGroup
@@ -150,6 +165,21 @@ type Link struct {
 	Label   string
 	Type    string
 	Referer string
+}
+
+func (l *Link) Play() {
+	if l.File == "" {
+		return
+	}
+	referer := ""
+	if l.Referer != "" {
+		referer = fmt.Sprintf(`--referrer="%s"`, referer)
+	}
+	cmd := exec.Command("mpv", l.File, referer)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Run()
 }
 
 func GoGoCDN(iurl string) (Ret []Link) {

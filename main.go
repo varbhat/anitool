@@ -3,29 +3,13 @@ package main
 import "fmt"
 
 func main() {
-	// var abc string
-	// fmt.Scanln(&abc)
-
-	mon := gogoStreamLinks("https://gogoanime.fi", "midori-days", "5")
+	mon := gogoStreamLinks("midori-days", "5")
+	var Ret []Link
 	for each := range mon {
+		Ret = append(Ret, each)
 		fmt.Println(each.File, each.Label, each.Referer, each.Type)
 	}
-
-	// mon2 := Fplayer(abc)
-	// for _, each := range mon2 {
-	// 	fmt.Println(each.File, each.Label, each.Referer, each.Type)
-
-	// }
-
-	// mon3 := StreamSB(abc)
-	// for _, each := range mon3 {
-	// 	fmt.Println(each.File, each.Label, each.Referer, each.Type)
-
-	// }
-
-	// mon4 := GoGoCDN(abc)
-	// for _, each := range mon4 {
-	// 	fmt.Println(each.File, each.Label, each.Referer, each.Type)
-
-	// }
+	var inp int
+	fmt.Scanln(&inp)
+	Ret[inp].Play()
 }
