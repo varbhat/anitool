@@ -18,6 +18,41 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+func gogoStreamLinks(gogobaseurl string, aid string, epno string) (ret chan string) {
+	ret = make(chan string)
+	go func() {
+		defer close(ret)
+		paramlist := []string{"-episode-%s", "-%s", "-episode-%s-1", "-camrip-episode-%s"}
+		for _, eachparam := range paramlist {
+			response, err := http.Get(fmt.Sprintf(gogobaseurl+"/"+aid+eachparam, epno))
+			if err != nil {
+				continue
+			}
+			doc, err := goquery.NewDocumentFromReader(response.Body)
+			if err != nil {
+				continue
+			}
+
+			if doc.Find(".entry-title").Text() != "404" {
+				dv := doc.Find("a[data-video]")
+				for _, eachlink := range dv.Nodes {
+					linko := goquery.NewDocumentFromNode(eachlink)
+					eachlinku := linko.AttrOr("data-video", "")
+					if strings.HasPrefix(eachlinku, "//") {
+						ret <- "https:" + eachlinku
+					} else {
+						ret <- eachlinku
+					}
+				}
+			} else {
+				break
+			}
+
+		}
+	}()
+	return
+}
+
 func aes256encrypt(plaintext []byte, key []byte, iv []byte, blockSize int) (ret string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
