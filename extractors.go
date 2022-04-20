@@ -121,10 +121,12 @@ func GoGoCDN(iurl string) (Ret []Link) {
 		cons := doc.Find(`[class^="container-"]:not(.wrapper)`)
 		wrcons := doc.Find(`[class*="wrapper container-"]`)
 		vidconts := doc.Find(`[class*="videocontent-"]`)
+		tokensel := doc.Find(`[data-value]`)
 
 		consText := cons.AttrOr("class", "")
 		wrconsText := wrcons.AttrOr("class", "")
 		vidcontsText := vidconts.AttrOr("class", "")
+		tokenText := tokensel.AttrOr("data-value", "")
 
 		for _, eachIterStr := range strings.Fields(consText) {
 			if strings.Contains(eachIterStr, "container-") {
@@ -146,8 +148,12 @@ func GoGoCDN(iurl string) (Ret []Link) {
 				break
 			}
 		}
+		token, err := aes256decrypt(tokenText, []byte(secret_key), []byte(iv), aes.BlockSize)
+		if err != nil {
+			fmt.Println(err)
+			return []Link{}
+		}
 
-		// fmt.Println(secret_key, iv, second_key)
 		vidid := iUrl.Query().Get("id")
 		if vidid == "" {
 			return
@@ -159,7 +165,7 @@ func GoGoCDN(iurl string) (Ret []Link) {
 			return
 		}
 
-		ajax_url := fmt.Sprintf("https://%s/encrypt-ajax.php?id=%s&alias=%s", iUrl.Host, encryptedvidid, vidid)
+		ajax_url := fmt.Sprintf("https://%s/encrypt-ajax.php?id=%s&alias=%s&%s", iUrl.Host, encryptedvidid, vidid, token)
 
 		req, err := http.NewRequest("POST", ajax_url, bytes.NewBuffer([]byte(ajax_url)))
 		if err != nil {
