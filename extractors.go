@@ -285,6 +285,8 @@ func StreamSB(iurl string) (Ret []Link) {
 	if err != nil {
 		return
 	}
+	req.Header.Set("Referer", iurl)
+	req.Header.Set("User-Agent", USERAGENT)
 	req.Header.Set("watchsb", "streamsb")
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -304,13 +306,13 @@ func StreamSB(iurl string) (Ret []Link) {
 		File:    SSBresp.SSD.File,
 		Label:   SSBresp.SSD.Title,
 		Type:    "hls",
-		Referer: iurl + "/",
+		Referer: iurl,
 	})
 	Ret = append(Ret, Link{
 		File:    SSBresp.SSD.Backup,
 		Label:   SSBresp.SSD.Title + " (Backup)",
 		Type:    "hls",
-		Referer: iurl + "/",
+		Referer: iurl,
 	})
 	return
 }
