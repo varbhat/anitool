@@ -19,9 +19,9 @@ func (l *Link) Play() {
 	}
 	referer := ""
 	if l.Referer != "" {
-		referer = fmt.Sprintf(`--referrer="%s"`, referer)
+		referer = fmt.Sprintf(`--referrer="%s"`, l.Referer)
 	}
-	cmd := exec.Command("mpv", l.File, referer)
+	cmd := exec.Command("mpv", `--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 12_3_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"`, referer, l.File)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
