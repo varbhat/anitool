@@ -25,7 +25,6 @@ func (l *Link) Play() {
 	}
 
 	cmd := exec.Command("sh", "-c", fmt.Sprintf(`mpv %s %s %s`, fmt.Sprintf(`--user-agent="%s"`, USERAGENT), referer, fmt.Sprintf(`"%s"`, l.File)))
-	fmt.Printf("%v", cmd.Args)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
